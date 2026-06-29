@@ -176,5 +176,18 @@ public class InMemoryFleetRepository : IFleetRepository
     public IReadOnlyList<Driver> GetDrivers() => _drivers;
     public Driver? GetDriverById(string id) => _drivers.Find(d => d.Id == id);
     public IReadOnlyList<Reservation> GetReservations() => _reservations;
+    public Reservation? GetReservationById(string id) => _reservations.Find(r => r.Id == id);
     public IReadOnlyList<FleetNotification> GetNotifications() => _notifications;
+
+    public Task<Bus> CreateBusAsync(Bus bus) { _buses.Add(bus); return Task.FromResult(bus); }
+    public Task<Bus?> UpdateBusAsync(Bus bus) { var i = _buses.FindIndex(b => b.Id == bus.Id); if (i >= 0) { _buses[i] = bus; return Task.FromResult<Bus?>(bus); } return Task.FromResult<Bus?>(null); }
+    public Task<bool> DeleteBusAsync(string id) { var r = _buses.RemoveAll(b => b.Id == id) > 0; return Task.FromResult(r); }
+
+    public Task<Driver> CreateDriverAsync(Driver d) { _drivers.Add(d); return Task.FromResult(d); }
+    public Task<Driver?> UpdateDriverAsync(Driver d) { var i = _drivers.FindIndex(x => x.Id == d.Id); if (i >= 0) { _drivers[i] = d; return Task.FromResult<Driver?>(d); } return Task.FromResult<Driver?>(null); }
+    public Task<bool> DeleteDriverAsync(string id) { var r = _drivers.RemoveAll(d => d.Id == id) > 0; return Task.FromResult(r); }
+
+    public Task<Reservation> CreateReservationAsync(Reservation r) { _reservations.Add(r); return Task.FromResult(r); }
+    public Task<Reservation?> UpdateReservationAsync(Reservation r) { var i = _reservations.FindIndex(x => x.Id == r.Id); if (i >= 0) { _reservations[i] = r; return Task.FromResult<Reservation?>(r); } return Task.FromResult<Reservation?>(null); }
+    public Task<bool> DeleteReservationAsync(string id) { var r = _reservations.RemoveAll(x => x.Id == id) > 0; return Task.FromResult(r); }
 }
