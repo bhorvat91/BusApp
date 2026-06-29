@@ -1,64 +1,80 @@
 # BusApp
 
-BusApp je pocetna MVP osnova za:
-- web aplikaciju za administraciju i dispecere
-- mobile aplikaciju za vozace
-- API servis za buduci backend i integraciju GPS/rezervacija
+BusApp je aplikacija za firme koje imaju autobuse — prati vozace, autobuse, rezervacije i raspored.
+
+## Arhitektura
+
+- **Backend**: ASP.NET Core 10 Web API (Clean Architecture)
+- **Web frontend**: React + Vite (TypeScript)
+- **Mobile**: React Native / Expo (TypeScript)
 
 ## Struktura
 
-- `/home/runner/work/BusApp/BusApp/apps/web` – web dashboard za pracenje flote i kalendar planiranja
-- `/home/runner/work/BusApp/BusApp/apps/mobile` – mobile ekran vozaca za dnevni raspored i status
-- `/home/runner/work/BusApp/BusApp/apps/api` – Express API sa mock podacima i pregledima
-- `/home/runner/work/BusApp/BusApp/packages/shared` – zajednicki tipovi i seed podaci
+```
+src/                          ← .NET solution
+├── BusApp.Domain/            ← Entiteti i enumi
+├── BusApp.Application/       ← Servisi, DTOs, interfejsi
+├── BusApp.Infrastructure/    ← Implementacija repozitorija (InMemory / buduci EF Core)
+└── BusApp.Api/               ← ASP.NET Core Minimal API
 
-## MVP sta je implementirano
-
-- pregled autobusa i vozaca sa statusima
-- lokacije autobusa i vozaca kroz mock GPS podatke
-- kalendarski pregled rezervacija i planiranih voznji
-- dnevni mobilni prikaz za vozaca
-- osnovni alerti i operativne notifikacije
-- API endpointi za overview, kalendar, rezervacije i detalj vozaca
+apps/
+├── web/                      ← React dashboard (Vite)
+└── mobile/                   ← Expo mobile app za vozace
+```
 
 ## Pokretanje
 
-U root direktoriju:
+### API (.NET)
+
+```bash
+cd src
+dotnet run --project BusApp.Api
+# API sluša na http://localhost:5110
+```
+
+### Web dashboard
 
 ```bash
 npm install
-```
-
-Web:
-
-```bash
 npm run dev:web
+# Otvori http://localhost:5173
 ```
 
-Mobile:
+### Mobile
 
 ```bash
 npm run dev:mobile
 ```
 
-API:
+## API Endpoints
 
-```bash
-npm run dev:api
-```
+| Method | URL                      | Opis                           |
+|--------|--------------------------|--------------------------------|
+| GET    | /health                  | Healthcheck                    |
+| GET    | /api/overview            | Dashboard: firma, autobusi, vozaci, notifikacije |
+| GET    | /api/calendar            | Kalendar rezervacija po danu   |
+| GET    | /api/reservations        | Sve rezervacije sa detaljima   |
+| GET    | /api/drivers/{driverId}  | Detalj vozaca sa rasporedom    |
 
 ## Verifikacija
 
 ```bash
-npm run lint
-npm run build
+# .NET build
+cd src && dotnet build
+
+# Web lint + build
+npm run lint:web
+npm run build:web
+
+# Mobile typecheck
 npm run typecheck:mobile
 ```
 
 ## Sljedeci koraci
 
-- autentikacija i multi-tenant podrka po firmi
-- live GPS stream umjesto mock podataka
-- conflict detection za vozace i autobuse u realnom vremenu
-- servisni modul, dokumenti i izvjestaji
-- integracija notifikacija i eventualno billing
+- Entity Framework Core + SQL baza umjesto InMemory
+- Autentikacija (JWT / Identity)
+- Multi-tenant po firmi
+- Live GPS stream (SignalR)
+- Conflict detection za vozace i autobuse
+- Servisni modul, dokumenti i izvjestaji

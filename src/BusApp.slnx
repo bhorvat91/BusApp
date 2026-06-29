@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="BusApp.Api/BusApp.Api.csproj" />
+  <Project Path="BusApp.Application/BusApp.Application.csproj" />
+  <Project Path="BusApp.Domain/BusApp.Domain.csproj" />
+  <Project Path="BusApp.Infrastructure/BusApp.Infrastructure.csproj" />
+</Solution>

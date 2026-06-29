@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -9,20 +10,83 @@ import {
   View,
 } from 'react-native';
 
-import {
-  drivers,
-  getBusById,
-  reservations,
-  statusLabels,
-  type FleetStatus,
-} from '../../packages/shared/src';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5110';
 
-const driver = drivers[0];
-const driverSchedule = reservations.filter((reservation) => reservation.driverId === driver.id);
+interface BusDto {
+  id: string;
+  code: string;
+  plate: string;
+  capacity: number;
+  location: { label: string };
+}
+
+interface ReservationDto {
+  id: string;
+  title: string;
+  route: string;
+  start: string;
+  pickup: string;
+  dropoff: string;
+}
+
+interface DriverDetailDto {
+  id: string;
+  name: string;
+  phone: string;
+  status: string;
+  statusLabel: string;
+  shift: string;
+  licences: string[];
+  bus: BusDto | null;
+  schedule: ReservationDto[];
+}
+
+type FleetStatus = 'on-route' | 'available' | 'break';
+
+const statusLabels: Record<string, string> = {
+  'on-route': 'Na ruti',
+  available: 'Slobodan',
+  break: 'Pauza',
+  service: 'Servis',
+  offline: 'Van mreze',
+};
 
 export default function App() {
-  const [status, setStatus] = useState<FleetStatus>(driver.status);
-  const assignedBus = useMemo(() => getBusById(driver.currentBusId), []);
+  const [driverData, setDriverData] = useState<DriverDetailDto | null>(null);
+  const [status, setStatus] = useState<FleetStatus>('on-route');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/drivers/drv-1`)
+      .then((r) => r.json())
+      .then((data: DriverDetailDto) => {
+        setDriverData(data);
+        setStatus(data.status as FleetStatus);
+      })
+      .catch((err) => setError(err.message));
+  }, []);
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centered}>
+          <Text style={styles.sectionTitle}>Greška</Text>
+          <Text style={styles.infoText}>{error}</Text>
+          <Text style={styles.infoText}>Pokreni API: cd src &amp;&amp; dotnet run --project BusApp.Api</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!driverData) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#0f766e" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -30,27 +94,29 @@ export default function App() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.heroCard}>
           <Text style={styles.eyebrow}>Driver mobile</Text>
-          <Text style={styles.title}>{driver.name}</Text>
+          <Text style={styles.title}>{driverData.name}</Text>
           <Text style={styles.subtitle}>
             Današnji raspored, status vožnje i dijeljenje lokacije za dispečerski tim.
           </Text>
           <View style={styles.statusRow}>
             <View style={styles.statusPill}>
-              <Text style={styles.statusText}>{statusLabels[status]}</Text>
+              <Text style={styles.statusText}>{statusLabels[status] || status}</Text>
             </View>
-            <Text style={styles.shiftText}>Smjena: {driver.shift}</Text>
+            <Text style={styles.shiftText}>Smjena: {driverData.shift}</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Dodijeljeni autobus</Text>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>{assignedBus?.code}</Text>
-            <Text style={styles.infoText}>{assignedBus?.plate}</Text>
-            <Text style={styles.infoText}>Kapacitet: {assignedBus?.capacity} mjesta</Text>
-            <Text style={styles.infoText}>Lokacija: {assignedBus?.location.label}</Text>
+        {driverData.bus && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Dodijeljeni autobus</Text>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>{driverData.bus.code}</Text>
+              <Text style={styles.infoText}>{driverData.bus.plate}</Text>
+              <Text style={styles.infoText}>Kapacitet: {driverData.bus.capacity} mjesta</Text>
+              <Text style={styles.infoText}>Lokacija: {driverData.bus.location.label}</Text>
+            </View>
           </View>
-        </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Brza promjena statusa</Text>
@@ -79,7 +145,7 @@ export default function App() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Današnje i naredne vožnje</Text>
-          {driverSchedule.map((reservation) => (
+          {driverData.schedule.map((reservation) => (
             <View key={reservation.id} style={styles.tripCard}>
               <Text style={styles.tripTime}>
                 {reservation.start.slice(0, 16).replace('T', ' ')}
@@ -111,6 +177,12 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#eef4fb',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   container: {
     padding: 20,

@@ -1,20 +1,127 @@
+import { useEffect, useState } from 'react'
 import './App.css'
 
-import {
-  buses,
-  company,
-  dashboardSummary,
-  drivers,
-  getBusById,
-  getDriverById,
-  notifications,
-  reservationsByDay,
-  statusLabels,
-} from '../../../packages/shared/src'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5110'
+
+interface BusLocation {
+  lat: number
+  lng: number
+  label: string
+}
+
+interface BusDto {
+  id: string
+  code: string
+  plate: string
+  capacity: number
+  status: string
+  location: BusLocation
+  assignedDriverId: string
+  nextServiceKm: number
+}
+
+interface DriverDto {
+  id: string
+  name: string
+  phone: string
+  status: string
+  currentBusId: string
+  shift: string
+  licences: string[]
+}
+
+interface NotificationDto {
+  id: string
+  level: string
+  title: string
+  description: string
+}
+
+interface ReservationDto {
+  id: string
+  title: string
+  route: string
+  start: string
+  end: string
+  busId: string
+  driverId: string
+  status: string
+}
+
+interface OverviewData {
+  company: { id: string; name: string; city: string; supportPhone: string }
+  summary: {
+    activeReservations: number
+    plannedReservations: number
+    activeBuses: number
+    availableDrivers: number
+  }
+  buses: BusDto[]
+  drivers: DriverDto[]
+  notifications: NotificationDto[]
+}
+
+interface CalendarData {
+  days: Record<string, ReservationDto[]>
+}
+
+const statusLabels: Record<string, string> = {
+  'on-route': 'Na ruti',
+  available: 'Slobodan',
+  break: 'Pauza',
+  service: 'Servis',
+  offline: 'Van mreze',
+}
 
 function App() {
-  const summary = dashboardSummary()
-  const calendar = reservationsByDay()
+  const [overview, setOverview] = useState<OverviewData | null>(null)
+  const [calendar, setCalendar] = useState<CalendarData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API_URL}/api/overview`).then((r) => r.json()),
+      fetch(`${API_URL}/api/calendar`).then((r) => r.json()),
+    ])
+      .then(([overviewData, calendarData]) => {
+        setOverview(overviewData)
+        setCalendar(calendarData)
+      })
+      .catch((err) => setError(err.message))
+  }, [])
+
+  if (error) {
+    return (
+      <main className="app-shell">
+        <section className="hero">
+          <div>
+            <h1>BusApp</h1>
+            <p className="hero-copy">
+              Greška pri učitavanju podataka: {error}
+            </p>
+            <p className="meta">Pokreni .NET API: cd src &amp;&amp; dotnet run --project BusApp.Api</p>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
+  if (!overview || !calendar) {
+    return (
+      <main className="app-shell">
+        <section className="hero">
+          <div>
+            <h1>BusApp</h1>
+            <p className="hero-copy">Učitavanje...</p>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
+  const { company, summary, buses, drivers, notifications } = overview
+  const findDriver = (id: string) => drivers.find((d) => d.id === id)
+  const findBus = (id: string) => buses.find((b) => b.id === id)
 
   return (
     <main className="app-shell">
@@ -60,11 +167,11 @@ function App() {
               <p className="eyebrow">Live pregled</p>
               <h2>Autobusi i lokacije</h2>
             </div>
-            <span className="pill">Mock GPS</span>
+            <span className="pill">.NET API</span>
           </div>
           <div className="fleet-grid">
             {buses.map((bus) => {
-              const driver = getDriverById(bus.assignedDriverId)
+              const driver = findDriver(bus.assignedDriverId)
 
               return (
                 <div className="fleet-card" key={bus.id}>
@@ -73,11 +180,8 @@ function App() {
                       <strong>{bus.code}</strong>
                       <p>{bus.plate}</p>
                     </div>
-                    <span
-                      className="status-badge"
-                      data-status={bus.status}
-                    >
-                      {statusLabels[bus.status]}
+                    <span className="status-badge" data-status={bus.status}>
+                      {statusLabels[bus.status] || bus.status}
                     </span>
                   </div>
                   <p className="location">{bus.location.label}</p>
@@ -117,16 +221,18 @@ function App() {
             </div>
           </div>
           <div className="calendar-grid">
-            {Object.entries(calendar).map(([day, items]) => (
+            {Object.entries(calendar.days).map(([day, items]) => (
               <div className="calendar-day" key={day}>
                 <strong>{day}</strong>
                 {items.map((item) => (
                   <div className="calendar-event" key={item.id}>
-                    <span>{item.start.slice(11, 16)} - {item.end.slice(11, 16)}</span>
+                    <span>
+                      {item.start.slice(11, 16)} - {item.end.slice(11, 16)}
+                    </span>
                     <strong>{item.title}</strong>
                     <p>{item.route}</p>
                     <p>
-                      {getBusById(item.busId)?.code} · {getDriverById(item.driverId)?.name}
+                      {findBus(item.busId)?.code} · {findDriver(item.driverId)?.name}
                     </p>
                   </div>
                 ))}
@@ -150,10 +256,10 @@ function App() {
                   <p>{driver.shift}</p>
                 </div>
                 <span className="status-badge" data-status={driver.status}>
-                  {statusLabels[driver.status]}
+                  {statusLabels[driver.status] || driver.status}
                 </span>
                 <p className="meta">
-                  {getBusById(driver.currentBusId)?.code} · {driver.licences.join(', ')}
+                  {findBus(driver.currentBusId)?.code} · {driver.licences.join(', ')}
                 </p>
               </div>
             ))}
